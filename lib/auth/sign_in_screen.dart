@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:golem/auth/sign_up_screen.dart';
+import 'package:golem/models/user.dart' as golem_model_user;
+
+import '../service/service.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -10,45 +13,19 @@ class SignInScreen extends StatefulWidget {
 
 class _SignInScreenState extends State<SignInScreen> {
   final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _nicknameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _nicknameController = TextEditingController();
+
   bool _isEmailValid = false;
-  bool _isNicknameValid = false;
   bool _isPasswordValid = false;
-  bool _isConfirmPasswordValid = false;
   bool _isPasswordVisible = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _emailController.addListener(_validateEmail);
-    _nicknameController.addListener(_validateNickname);
-    _passwordController.addListener(_validatePassword);
-    _confirmPasswordController.addListener(_validateConfirmPassword);
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _nicknameController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
-    super.dispose();
-  }
+  String? _errorMessage;
 
   void _validateEmail() {
     final email = _emailController.text;
     final regex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
     setState(() {
       _isEmailValid = regex.hasMatch(email);
-    });
-  }
-
-  void _validateNickname() {
-    final nickname = _nicknameController.text;
-    setState(() {
-      _isNicknameValid = nickname.length > 3;
     });
   }
 
@@ -60,17 +37,59 @@ class _SignInScreenState extends State<SignInScreen> {
     });
   }
 
-  void _validateConfirmPassword() {
-    final confirmPassword = _confirmPasswordController.text;
-    setState(() {
-      _isConfirmPasswordValid = confirmPassword == _passwordController.text;
-    });
-  }
-
   void _togglePasswordVisibility() {
     setState(() {
       _isPasswordVisible = !_isPasswordVisible;
     });
+  }
+
+  Future<void> _register() async {
+    final email = _emailController.text;
+    final password = _passwordController.text;
+    final nickname = _nicknameController.text;
+
+    if (!_isEmailValid || !_isPasswordValid || nickname.isEmpty) {
+      setState(() {
+        _errorMessage = 'Пожалуйста, заполните все поля корректно';
+      });
+      return;
+    }
+
+    final user = golem_model_user.User(
+      nickname: nickname,
+      email: email,
+      password: password,
+    );
+
+    final userId = await SupabaseService().registerUser(user);
+
+    if (userId != null) {
+      // Переходим на экран входа с сообщением о подтверждении почты
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => SignUpScreen(),
+        ),
+      );
+
+      // Показываем сообщение о необходимости подтвердить почту
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Пожалуйста, подтвердите вашу почту. Проверьте вашу электронную почту для получения ссылки подтверждения.'),
+          duration: Duration(seconds: 5),
+        ),
+      );
+    } else {
+      setState(() {
+        _errorMessage = 'Ошибка регистрации. Пожалуйста, проверьте данные и попробуйте снова.';
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController.addListener(_validateEmail);
+    _passwordController.addListener(_validatePassword);
   }
 
   @override
@@ -78,7 +97,7 @@ class _SignInScreenState extends State<SignInScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Авторизация',
+          'Регистрация',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -97,7 +116,7 @@ class _SignInScreenState extends State<SignInScreen> {
                   )
                 ],
               ),
-              const SizedBox(height: 8.0),
+              const SizedBox(height: 8),
               Container(
                 height: 48.0,
                 decoration: BoxDecoration(
@@ -107,7 +126,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 child: TextField(
                   controller: _nicknameController,
                   decoration: InputDecoration(
-                    hintText: '@yournickname',
+                    hintText: 'Введите никнейм',
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
                     border: InputBorder.none,
                     hintStyle: const TextStyle(color: Color(0xFF80858F)),
@@ -115,20 +134,7 @@ class _SignInScreenState extends State<SignInScreen> {
                   style: const TextStyle(color: Colors.black),
                 ),
               ),
-              if (!_isNicknameValid && _nicknameController.text.isNotEmpty)
-                const Padding(
-                  padding: EdgeInsets.only(top: 8.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Никнейм должен быть более 3 символов',
-                        style: TextStyle(color: Colors.red),
-                      )
-                    ],
-                  ),
-                ),
-              const SizedBox(height: 24.0),
+              const SizedBox(height: 8.0),
               Row(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
@@ -138,7 +144,7 @@ class _SignInScreenState extends State<SignInScreen> {
                   )
                 ],
               ),
-              const SizedBox(height: 8.0),
+              const SizedBox(height: 8),
               Container(
                 height: 48.0,
                 decoration: BoxDecoration(
@@ -169,7 +175,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     ],
                   ),
                 ),
-              const SizedBox(height: 24.0),
+              const SizedBox(height: 8.0),
               Row(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
@@ -212,52 +218,18 @@ class _SignInScreenState extends State<SignInScreen> {
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [
                       Text(
-                        'Пароль не прошел проверку',
+                        'Пароль должен содержать минимум 8 символов, включая буквы, цифры и спецсимволы',
                         style: TextStyle(color: Colors.red),
                       )
                     ],
                   ),
                 ),
-              const SizedBox(height: 24.0),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Подтверждение пароля',
-                    style: TextStyle(color: Color(0xFF80858F)),
-                  )
-                ],
-              ),
-              const SizedBox(height: 8.0),
-              Container(
-                height: 48.0,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8F8F8),
-                  borderRadius: BorderRadius.circular(12.0),
-                ),
-                child: TextField(
-                  controller: _confirmPasswordController,
-                  obscureText: !_isPasswordVisible,
-                  decoration: InputDecoration(
-                    hintText: 'Подтвердите пароль',
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-                    border: InputBorder.none,
-                    hintStyle: const TextStyle(color: Color(0xFF80858F)),
-                  ),
-                  style: const TextStyle(color: Colors.black),
-                ),
-              ),
-              if (!_isConfirmPasswordValid && _confirmPasswordController.text.isNotEmpty)
-                const Padding(
-                  padding: EdgeInsets.only(top: 8.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Пароли не совпадают',
-                        style: TextStyle(color: Colors.red),
-                      )
-                    ],
+              if (_errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: Colors.red),
                   ),
                 ),
               const SizedBox(height: 24.0),
@@ -265,19 +237,19 @@ class _SignInScreenState extends State<SignInScreen> {
                 width: double.infinity,
                 height: 48.0,
                 child: ElevatedButton(
-                  onPressed: _isEmailValid && _isNicknameValid && _isPasswordValid && _isConfirmPasswordValid
-                      ? () {
-                    // Действие при нажатии на кнопку подтверждения почты
-                  }
+                  onPressed: _isEmailValid && _isPasswordValid && _nicknameController.text.isNotEmpty
+                      ? _register
                       : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _isEmailValid && _isNicknameValid && _isPasswordValid && _isConfirmPasswordValid ? Colors.black : const Color(0xFFD9D9D9),
+                    backgroundColor: _isEmailValid && _isPasswordValid && _nicknameController.text.isNotEmpty
+                        ? Colors.black
+                        : const Color(0xFFD9D9D9),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12.0),
                     ),
                   ),
                   child: const Text(
-                    'Подтвердить почту',
+                    'Зарегистрироваться',
                     style: TextStyle(color: Colors.white),
                   ),
                 ),
@@ -287,7 +259,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Text(
-                    'Есть аккаунт ?',
+                    'Уже есть аккаунт?',
                     style: TextStyle(color: Color(0xFF80858F)),
                   ),
                   TextButton(

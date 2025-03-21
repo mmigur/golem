@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:golem/auth/sign_in_screen.dart';
+import 'package:golem/home_screen.dart';
+
+import '../service/service.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -15,7 +18,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _isEmailValid = false;
   bool _isPasswordValid = false;
   bool _isPasswordVisible = false;
-
+  String? _errorMessage;
 
   void _validateEmail() {
     final email = _emailController.text;
@@ -27,9 +30,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   void _validatePassword() {
     final password = _passwordController.text;
-    final regex = RegExp(r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$');
     setState(() {
-      _isPasswordValid = regex.hasMatch(password);
+      _isPasswordValid = password.isNotEmpty;
     });
   }
 
@@ -37,6 +39,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
     setState(() {
       _isPasswordVisible = !_isPasswordVisible;
     });
+  }
+
+  Future<void> _login() async {
+    final email = _emailController.text;
+    final password = _passwordController.text;
+
+    final user = await SupabaseService().loginUser(email, password);
+
+    if (user != null) {
+      // Вход успешен, переходим на HomeScreen
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => HomeScreen()),
+      );
+    } else {
+      setState(() {
+        _errorMessage = 'Неверный email или пароль. Убедитесь, что вы подтвердили вашу почту.';
+      });
+    }
   }
 
   @override
@@ -137,24 +157,45 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   style: const TextStyle(color: Colors.black),
                 ),
               ),
+              if (!_isPasswordValid && _passwordController.text.isNotEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(top: 8.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Пароль не прошел проверку',
+                        style: TextStyle(color: Colors.red),
+                      )
+                    ],
+                  ),
+                ),
+              if (_errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
               const SizedBox(height: 24.0),
               SizedBox(
                 width: double.infinity,
                 height: 48.0,
                 child: ElevatedButton(
                   onPressed: _isEmailValid && _isPasswordValid
-                      ? () {
-                    // Действие при нажатии на кнопку подтверждения почты
-                  }
+                      ? _login
                       : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _isEmailValid && _isPasswordValid ? Colors.black : const Color(0xFFD9D9D9),
+                    backgroundColor: _isEmailValid && _isPasswordValid
+                        ? Colors.black
+                        : const Color(0xFFD9D9D9),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12.0),
                     ),
                   ),
                   child: const Text(
-                    'Подтвердить почту',
+                    'Войти',
                     style: TextStyle(color: Colors.white),
                   ),
                 ),
@@ -164,7 +205,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Text(
-                    'Нет аккаунта ?',
+                    'Нет аккаунта?',
                     style: TextStyle(color: Color(0xFF80858F)),
                   ),
                   TextButton(
