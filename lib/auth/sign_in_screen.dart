@@ -74,13 +74,13 @@ class _SignInScreenState extends State<SignInScreen> {
       // Показываем сообщение о необходимости подтвердить почту
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Пожалуйста, подтвердите вашу почту. Проверьте вашу электронную почту для получения ссылки подтверждения.'),
+          content: Text('Пожалуйста, подтвердите вашу почту.'),
           duration: Duration(seconds: 5),
         ),
       );
     } else {
       setState(() {
-        _errorMessage = 'Ошибка регистрации. Пожалуйста, проверьте данные и попробуйте снова.';
+        _errorMessage = 'Проверьте данные и попробуйте снова.';
       });
     }
   }
