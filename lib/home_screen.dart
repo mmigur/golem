@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:golem/tab/goal_tab.dart';
+import 'package:golem/tab/reflection_tab.dart';
+import 'package:golem/tab/tasks_tab.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -12,7 +15,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   DateTime _selectedDate = DateTime.now();
-  bool _isCalendarExpanded = true;
+  DateTime _currentMonth = DateTime.now();
+  bool _isCalendarExpanded = false;
   String _nickname = '';
   final SupabaseClient _supabase = Supabase.instance.client;
 
@@ -112,6 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
+          if (_isCalendarExpanded) _buildMonthSelector(),
           _buildCalendar(),
           Expanded(child: _pages[_currentIndex]),
         ],
@@ -139,38 +144,117 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCalendar() {
-    final daysInMonth = DateUtils.getDaysInMonth(
-      _selectedDate.year,
-      _selectedDate.month,
+  Widget _buildMonthSelector() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left),
+            onPressed: () {
+              setState(() {
+                _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
+              });
+            },
+          ),
+          Text(
+            DateFormat('MMMM y', 'ru_RU').format(_currentMonth),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          IconButton(
+            icon: const Icon(Icons.chevron_right),
+            onPressed: () {
+              setState(() {
+                _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
+              });
+            },
+          ),
+        ],
+      ),
     );
+  }
 
-    final startDate = _isCalendarExpanded
-        ? 1
-        : _selectedDate.day - 3 > 0 ? _selectedDate.day - 3 : 1;
-    final endDate = _isCalendarExpanded
-        ? daysInMonth
-        : _selectedDate.day + 3 <= daysInMonth
-        ? _selectedDate.day + 3
-        : daysInMonth;
+  Widget _buildCalendar() {
+    if (!_isCalendarExpanded) {
+      // Compact view - show only current week
+      final weekStart = _selectedDate.subtract(Duration(days: _selectedDate.weekday % 7));
+      final days = List.generate(7, (i) => weekStart.add(Duration(days: i)));
+
+      return SizedBox(
+        height: 70,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          itemCount: days.length,
+          itemBuilder: (context, index) {
+            final date = days[index];
+            final isSelected = date.day == _selectedDate.day &&
+                date.month == _selectedDate.month &&
+                date.year == _selectedDate.year;
+
+            return GestureDetector(
+              onTap: () => setState(() {
+                _selectedDate = date;
+                _currentMonth = DateTime(date.year, date.month);
+              }),
+              child: Container(
+                width: 50,
+                margin: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.black : null,
+                  shape: BoxShape.circle,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '${date.day}',
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      _getShortWeekday(date.weekday),
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : const Color(0xFF80858F),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    }
+
+    // Expanded view - show full month
+    final firstDayOfMonth = DateTime(_currentMonth.year, _currentMonth.month, 1);
+    final daysInMonth = DateUtils.getDaysInMonth(_currentMonth.year, _currentMonth.month);
+    final startingWeekday = firstDayOfMonth.weekday % 7; // 0 for Sunday, 1 for Monday, etc.
 
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 7,
           childAspectRatio: 1,
-          mainAxisSpacing: _isCalendarExpanded ? 0 : 8,
         ),
-        itemCount: _isCalendarExpanded ? daysInMonth : 7,
+        itemCount: daysInMonth + startingWeekday,
         itemBuilder: (context, index) {
-          final dayIndex = _isCalendarExpanded
-              ? index + 1
-              : startDate + (index % (endDate - startDate + 1));
-          final date = DateTime(_selectedDate.year, _selectedDate.month, dayIndex);
-          final isSelected = date.day == _selectedDate.day;
+          if (index < startingWeekday) {
+            return const SizedBox.shrink(); // Empty space for days before 1st of month
+          }
+
+          final dayIndex = index - startingWeekday + 1;
+          final date = DateTime(_currentMonth.year, _currentMonth.month, dayIndex);
+          final isSelected = date.day == _selectedDate.day &&
+              date.month == _selectedDate.month &&
+              date.year == _selectedDate.year;
 
           return GestureDetector(
             onTap: () => setState(() => _selectedDate = date),
@@ -209,32 +293,5 @@ class _HomeScreenState extends State<HomeScreen> {
   String _getShortWeekday(int weekday) {
     const days = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
     return days[weekday % 7];
-  }
-}
-
-class GoalsTab extends StatelessWidget {
-  const GoalsTab({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text('Цели'));
-  }
-}
-
-class TasksTab extends StatelessWidget {
-  const TasksTab({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text('Задачи'));
-  }
-}
-
-class ReflectionTab extends StatelessWidget {
-  const ReflectionTab({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text('Рефлексия'));
   }
 }
