@@ -60,6 +60,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isGoalsTab = _currentIndex == 0;
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -72,7 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   DateFormat('d MMMM y', 'ru_RU').format(_selectedDate),
                   style: const TextStyle(fontSize: 20),
                 ),
-                Text(
+                if (!isGoalsTab) Text(
                   DateFormat('EEEE', 'ru_RU').format(_selectedDate),
                   style: const TextStyle(fontSize: 14, color: Colors.grey),
                 ),
@@ -89,35 +91,37 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
-          Row(
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 12.0),
-                child: _nickname.isNotEmpty
-                    ? Text(
-                  '@$_nickname',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.black,
-                  ),
-                )
-                    : const SizedBox.shrink(),
-              ),
-              const Spacer(),
-              IconButton(
-                icon: Icon(
-                  _isCalendarExpanded ? Icons.expand_less : Icons.expand_more,
+          if (!isGoalsTab) ...[
+            Row(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 12.0),
+                  child: _nickname.isNotEmpty
+                      ? Text(
+                    '@$_nickname',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.black,
+                    ),
+                  )
+                      : const SizedBox.shrink(),
                 ),
-                onPressed: () {
-                  setState(() {
-                    _isCalendarExpanded = !_isCalendarExpanded;
-                  });
-                },
-              ),
-            ],
-          ),
-          if (_isCalendarExpanded) _buildMonthSelector(),
-          _buildCalendar(),
+                const Spacer(),
+                IconButton(
+                  icon: Icon(
+                    _isCalendarExpanded ? Icons.expand_less : Icons.expand_more,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _isCalendarExpanded = !_isCalendarExpanded;
+                    });
+                  },
+                ),
+              ],
+            ),
+            if (_isCalendarExpanded) _buildMonthSelector(),
+            _buildCalendar(),
+          ],
           Expanded(child: _pages[_currentIndex]),
         ],
       ),
@@ -144,6 +148,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // Остальные методы (_buildMonthSelector, _buildCalendar, _getShortWeekday) остаются без изменений
   Widget _buildMonthSelector() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
