@@ -19,9 +19,10 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isCalendarExpanded = false;
   String _nickname = '';
   final SupabaseClient _supabase = Supabase.instance.client;
+  final GlobalKey<GoalsTabState> _goalsTabKey = GlobalKey();
 
-  final List<Widget> _pages = [
-    const GoalsTab(),
+  late final List<Widget> _pages = [
+    GoalsTab(key: _goalsTabKey),
     const TasksTab(),
     const ReflectionTab(),
   ];
@@ -81,7 +82,17 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             FloatingActionButton(
-              onPressed: () {},
+              onPressed: () {
+                if (_currentIndex == 0) {
+                  // Получаем состояние GoalsTab и вызываем метод
+                  final goalsTabState = _goalsTabKey.currentState;
+                  if (goalsTabState != null) {
+                    goalsTabState.showAddGoalSheet();
+                  }
+                } else {
+                  // Логика для других вкладок
+                }
+              },
               mini: true,
               backgroundColor: Colors.black,
               child: const Icon(Icons.add, color: Colors.white),
@@ -148,7 +159,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Остальные методы (_buildMonthSelector, _buildCalendar, _getShortWeekday) остаются без изменений
   Widget _buildMonthSelector() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -182,7 +192,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildCalendar() {
     if (!_isCalendarExpanded) {
-      // Compact view - show only current week
       final weekStart = _selectedDate.subtract(Duration(days: _selectedDate.weekday % 7));
       final days = List.generate(7, (i) => weekStart.add(Duration(days: i)));
 
@@ -235,10 +244,9 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    // Expanded view - show full month
     final firstDayOfMonth = DateTime(_currentMonth.year, _currentMonth.month, 1);
     final daysInMonth = DateUtils.getDaysInMonth(_currentMonth.year, _currentMonth.month);
-    final startingWeekday = firstDayOfMonth.weekday % 7; // 0 for Sunday, 1 for Monday, etc.
+    final startingWeekday = firstDayOfMonth.weekday % 7;
 
     return Padding(
       padding: const EdgeInsets.all(8.0),
@@ -252,7 +260,7 @@ class _HomeScreenState extends State<HomeScreen> {
         itemCount: daysInMonth + startingWeekday,
         itemBuilder: (context, index) {
           if (index < startingWeekday) {
-            return const SizedBox.shrink(); // Empty space for days before 1st of month
+            return const SizedBox.shrink();
           }
 
           final dayIndex = index - startingWeekday + 1;
