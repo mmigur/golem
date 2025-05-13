@@ -195,7 +195,7 @@ class TasksTabState extends State<TasksTab> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         builder: (context) => FractionallySizedBox(
-          heightFactor: 0.55, // Уменьшаем высоту шторки с 0.7 до 0.55
+          heightFactor: 0.65, // Увеличиваем высоту шторки с 0.55 до 0.65
           child: _buildAddTaskSheet(),
         ),
       );
@@ -441,7 +441,7 @@ class TasksTabState extends State<TasksTab> {
         ),
         builder: (context) {
           return FractionallySizedBox(
-            heightFactor: 0.55, // Уменьшаем высоту шторки с 0.7 до 0.55
+            heightFactor: 0.65, // Увеличиваем высоту шторки с 0.55 до 0.65
             child: StatefulBuilder(
               builder: (context, setState) {
                 return SingleChildScrollView(
@@ -453,58 +453,12 @@ class TasksTabState extends State<TasksTab> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            isEditing ? 'Редактирование задачи' : 'Детали задачи',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Row(
-                            children: [
-                              // Кнопка редактирования/сохранения
-                              IconButton(
-                                icon: Icon(
-                                  isEditing ? Icons.save : Icons.edit,
-                                  color: Colors.black,
-                                ),
-                                onPressed: () {
-                                  if (isEditing) {
-                                    // Сохраняем изменения
-                                    _updateTask(
-                                      task['id'],
-                                      titleController.text,
-                                      descriptionController.text,
-                                      selectedGoalId,
-                                      taskDate,
-                                      doneParamsController.text,
-                                    ).then((_) {
-                                      Navigator.pop(context);
-                                    });
-                                  } else {
-                                    // Переключаемся в режим редактирования
-                                    setState(() {
-                                      isEditing = true;
-                                    });
-                                  }
-                                },
-                              ),
-                              // Кнопка удаления
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.delete,
-                                  color: Colors.red,
-                                ),
-                                onPressed: () {
-                                  _confirmDeleteTask(context, task['id']);
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
+                      Text(
+                        isEditing ? 'Редактирование задачи' : 'Детали задачи',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 20),
                       
@@ -622,37 +576,130 @@ class TasksTabState extends State<TasksTab> {
                       ),
                       Row(
                         children: [
-                          Text(_completedTaskIds.contains(task['id']) 
-                              ? 'Выполнено' 
-                              : 'Не выполнено'),
-                          const SizedBox(width: 10),
-                          GestureDetector(
-                            onTap: () {
-                              _toggleTaskCompletion(task['id']);
-                              setState(() {}); // Обновляем UI
-                            },
-                            child: Container(
-                              width: 28,
-                              height: 28,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: _completedTaskIds.contains(task['id'])
-                                      ? const Color(0xFF00AA00)
-                                      : const Color(0xFFFF0000),
-                                  width: 2,
-                                ),
+                          Container(
+                            width: 14,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _completedTaskIds.contains(task['id']) 
+                                  ? const Color(0xFF00AA00) 
+                                  : Colors.transparent,
+                              border: Border.all(
                                 color: _completedTaskIds.contains(task['id'])
                                     ? const Color(0xFF00AA00)
-                                    : Colors.transparent,
+                                    : const Color(0xFFFF0000),
+                                width: 1
                               ),
-                              child: _completedTaskIds.contains(task['id'])
-                                  ? const Icon(Icons.check, color: Colors.white, size: 18)
-                                  : null,
                             ),
+                            child: _completedTaskIds.contains(task['id'])
+                                ? const Icon(Icons.check, color: Colors.white, size: 10)
+                                : null,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _completedTaskIds.contains(task['id']) 
+                                ? 'Выполнено' 
+                                : 'Не выполнено',
+                            style: const TextStyle(fontSize: 16),
                           ),
                         ],
                       ),
+                      
+                      const SizedBox(height: 24),
+                      
+                      // Кнопки действий
+                      if (!isEditing) Row(
+                        children: [
+                          // Кнопка редактирования - делаем шире, flex: 6
+                          Expanded(
+                            flex: 6,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  isEditing = true;
+                                });
+                              },
+                              icon: const Icon(Icons.edit, color: Colors.white),
+                              label: const Text('Редактировать', style: TextStyle(color: Colors.white)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          // Кнопка удаления - делаем уже, flex: 5
+                          Expanded(
+                            flex: 5,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                _confirmDeleteTask(context, task['id']);
+                              },
+                              icon: const Icon(Icons.delete, color: Colors.white),
+                              label: const Text('Удалить', style: TextStyle(color: Colors.white)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ) else SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            _updateTask(
+                              task['id'],
+                              titleController.text,
+                              descriptionController.text,
+                              selectedGoalId,
+                              taskDate,
+                              doneParamsController.text,
+                            ).then((_) {
+                              Navigator.pop(context);
+                            });
+                          },
+                          icon: const Icon(Icons.save, color: Colors.white),
+                          label: const Text('Сохранить', style: TextStyle(color: Colors.white)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // Кнопка выполнения
+                      if (!isEditing) SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _toggleTaskCompletion(task['id']);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            _completedTaskIds.contains(task['id']) 
+                                ? 'Отменить выполнение' 
+                                : 'Выполнить',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                     ],
                   ),
                 );
