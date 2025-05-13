@@ -31,6 +31,11 @@ class GoalsTabState extends State<GoalsTab> {
     _loadGoals();
   }
 
+  // Добавляем метод для обновления при переключении между вкладками
+  void refreshGoalsData() {
+    _loadGoals();
+  }
+
   // Метод для загрузки целей
   Future<void> _loadGoals() async {
     try {
@@ -39,9 +44,17 @@ class GoalsTabState extends State<GoalsTab> {
         _error = null;
       });
       
-      _goals = await _fetchGoals();
+      final goals = await _fetchGoals();
       
       setState(() {
+        _goals = goals;
+        // Обновляем локальный набор выполненных целей на основе поля isComplete
+        _completedGoalIds.clear();
+        for (var goal in goals) {
+          if (goal['isComplete'] == true) {
+            _completedGoalIds.add(goal['id']);
+          }
+        }
         _isLoading = false;
       });
     } catch (e) {
@@ -73,6 +86,7 @@ class GoalsTabState extends State<GoalsTab> {
             'after_params': _afterParamsController.text,
             'completion_criteria': _doneParamsController.text, // Используем поле completion_criteria
             'profile_id': user.id,
+            'isComplete': false, // По умолчанию цель не выполнена
           };
           
           final response = await _supabase.from('goals').insert(newGoal).select();
@@ -138,132 +152,136 @@ class GoalsTabState extends State<GoalsTab> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => _buildAddGoalSheet(),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => FractionallySizedBox(
+        heightFactor: 0.55, // Уменьшаем высоту шторки с 0.7 до 0.55
+        child: _buildAddGoalSheet(),
+      ),
     );
   }
 
   Widget _buildAddGoalSheet() {
     return SingleChildScrollView(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
+      padding: const EdgeInsets.symmetric(
+        vertical: 20,
+        horizontal: 20,
       ),
-      child: Container(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Название',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Название',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            TextFormField(
+              controller: _titleController,
+              decoration: const InputDecoration(
+                hintText: 'Введите название цели',
               ),
-              TextFormField(
-                controller: _titleController,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Пожалуйста, введите название';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Описание',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            TextFormField(
+              controller: _descriptionController,
+              decoration: const InputDecoration(
+                hintText: 'Введите описание цели',
+              ),
+              maxLines: 3,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Пожалуйста, введите описание';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Дедлайн',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            InkWell(
+              onTap: () => _selectDate(context),
+              child: InputDecorator(
                 decoration: const InputDecoration(
-                  hintText: 'Введите название цели',
+                  suffixIcon: Icon(Icons.calendar_today),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Пожалуйста, введите название';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Описание',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              TextFormField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(
-                  hintText: 'Введите описание цели',
-                ),
-                maxLines: 3,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Пожалуйста, введите описание';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Дедлайн',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              InkWell(
-                onTap: () => _selectDate(context),
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    suffixIcon: Icon(Icons.calendar_today),
-                  ),
-                  child: Text(
-                    _selectedDate != null
-                        ? '${_selectedDate!.day}.${_selectedDate!.month}.${_selectedDate!.year}'
-                        : 'Выберите дату',
-                    style: TextStyle(
-                      color: _selectedDate != null ? Colors.black : Colors.grey,
-                    ),
+                child: Text(
+                  _selectedDate != null
+                      ? '${_selectedDate!.day}.${_selectedDate!.month}.${_selectedDate!.year}'
+                      : 'Выберите дату',
+                  style: TextStyle(
+                    color: _selectedDate != null ? Colors.black : Colors.grey,
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              const Text(
-                'Что после?',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Что после?',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            TextFormField(
+              controller: _afterParamsController,
+              decoration: const InputDecoration(
+                hintText: 'Что будет после выполнения цели?',
               ),
-              TextFormField(
-                controller: _afterParamsController,
-                decoration: const InputDecoration(
-                  hintText: 'Что будет после выполнения цели?',
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Пожалуйста, укажите что будет после';
-                  }
-                  return null;
-                },
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Пожалуйста, укажите что будет после';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Критерии выполнимости',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            TextFormField(
+              controller: _doneParamsController,
+              decoration: const InputDecoration(
+                hintText: 'Как вы поймете что цель выполнена?',
               ),
-              const SizedBox(height: 16),
-              const Text(
-                'Критерии выполнимости',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              TextFormField(
-                controller: _doneParamsController,
-                decoration: const InputDecoration(
-                  hintText: 'Как вы поймете что цель выполнена?',
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Пожалуйста, укажите критерии';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _addGoal,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Добавить',
-                    style: TextStyle(color: Colors.white),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Пожалуйста, укажите критерии';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _addGoal,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
+                child: const Text(
+                  'Добавить',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
-              const SizedBox(height: 16),
-            ],
-          ),
+            ),
+            const SizedBox(height: 16),
+          ],
         ),
       ),
     );
@@ -409,181 +427,182 @@ class GoalsTabState extends State<GoalsTab> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => SingleChildScrollView(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-          left: 16,
-          right: 16,
-          top: 20,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Заголовок детального просмотра
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            
-            // Название
-            const Text(
-              'Название',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              goal['title'] ?? '',
-              style: const TextStyle(fontSize: 18),
-            ),
-            const SizedBox(height: 16),
-            
-            // Описание
-            const Text(
-              'Описание',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              goal['description'] ?? '',
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            
-            // Дедлайн
-            const Text(
-              'Дедлайн',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              '${deadline.day}.${deadline.month}.${deadline.year}',
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            
-            // Что после?
-            const Text(
-              'Что после?',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              goal['after_params'] ?? '',
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            
-            // Критерии выполнимости
-            const Text(
-              'Критерий выполнимости',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              goal['completion_criteria'] ?? '',
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            
-            // Статус
-            const Text(
-              'Статус',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            Row(
-              children: [
-                Container(
-                  width: 14,
-                  height: 14,
+      builder: (context) => FractionallySizedBox(
+        heightFactor: 0.55, // Уменьшаем высоту шторки с 0.7 до 0.55
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(
+            vertical: 20,
+            horizontal: 20,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Заголовок детального просмотра
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isCompleted ? checkboxColor : Colors.transparent,
-                    border: Border.all(color: checkboxColor, width: 1),
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  child: isCompleted
-                      ? const Icon(Icons.check, color: Colors.white, size: 10)
-                      : null,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  isCompleted ? 'Выполнено' : 'Не выполнено',
-                  style: const TextStyle(fontSize: 16),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Кнопки действий
-            Row(
-              children: [
-                // Кнопка редактирования - делаем шире, flex: 6
-                Expanded(
-                  flex: 6,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _showEditGoalSheet(goal, index);
-                    },
-                    icon: const Icon(Icons.edit, color: Colors.white),
-                    label: const Text('Редактировать', style: TextStyle(color: Colors.white)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                // Кнопка удаления - делаем уже, flex: 5
-                Expanded(
-                  flex: 5,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _showDeleteConfirmationDialog(goal, index);
-                    },
-                    icon: const Icon(Icons.delete, color: Colors.white),
-                    label: const Text('Удалить', style: TextStyle(color: Colors.white)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Кнопка выполнения
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _toggleGoalCompletion(goal['id']);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Text(
-                  isCompleted ? 'Отменить выполнение' : 'Выполнить',
-                  style: const TextStyle(color: Colors.white),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-          ],
+              const SizedBox(height: 20),
+              
+              // Название
+              const Text(
+                'Название',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                goal['title'] ?? '',
+                style: const TextStyle(fontSize: 18),
+              ),
+              const SizedBox(height: 16),
+              
+              // Описание
+              const Text(
+                'Описание',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                goal['description'] ?? '',
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              
+              // Дедлайн
+              const Text(
+                'Дедлайн',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                '${deadline.day}.${deadline.month}.${deadline.year}',
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              
+              // Что после?
+              const Text(
+                'Что после?',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                goal['after_params'] ?? '',
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              
+              // Критерии выполнимости
+              const Text(
+                'Критерий выполнимости',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                goal['completion_criteria'] ?? '',
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              
+              // Статус
+              const Text(
+                'Статус',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              Row(
+                children: [
+                  Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isCompleted ? checkboxColor : Colors.transparent,
+                      border: Border.all(color: checkboxColor, width: 1),
+                    ),
+                    child: isCompleted
+                        ? const Icon(Icons.check, color: Colors.white, size: 10)
+                        : null,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    isCompleted ? 'Выполнено' : 'Не выполнено',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Кнопки действий
+              Row(
+                children: [
+                  // Кнопка редактирования - делаем шире, flex: 6
+                  Expanded(
+                    flex: 6,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _showEditGoalSheet(goal, index);
+                      },
+                      icon: const Icon(Icons.edit, color: Colors.white),
+                      label: const Text('Редактировать', style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Кнопка удаления - делаем уже, flex: 5
+                  Expanded(
+                    flex: 5,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _showDeleteConfirmationDialog(goal, index);
+                      },
+                      icon: const Icon(Icons.delete, color: Colors.white),
+                      label: const Text('Удалить', style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Кнопка выполнения
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _toggleGoalCompletion(goal['id']);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    isCompleted ? 'Отменить выполнение' : 'Выполнить',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
     );
@@ -604,13 +623,17 @@ class GoalsTabState extends State<GoalsTab> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => SingleChildScrollView(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-          ),
-          child: Container(
-            padding: const EdgeInsets.all(16.0),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => FractionallySizedBox(
+        heightFactor: 0.55, // Уменьшаем высоту шторки с 0.7 до 0.55
+        child: StatefulBuilder(
+          builder: (context, setState) => SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(
+              vertical: 20,
+              horizontal: 20,
+            ),
             child: Form(
               key: editFormKey,
               child: Column(
@@ -775,6 +798,9 @@ class GoalsTabState extends State<GoalsTab> {
   ) async {
     if (formKey.currentState!.validate()) {
       try {
+        // Проверяем текущий статус выполнения цели
+        final bool isCompleted = _completedGoalIds.contains(goalId);
+        
         // Создаем обновленную версию цели 
         final updatedGoal = {
           'title': title,
@@ -782,6 +808,7 @@ class GoalsTabState extends State<GoalsTab> {
           'deadline': deadline.toIso8601String(),
           'after_params': afterParams,
           'completion_criteria': doneParams, // Обновляем поле completion_criteria
+          'isComplete': isCompleted, // Сохраняем текущий статус выполнения
         };
         
         // Сначала обновляем локальные данные
@@ -889,14 +916,31 @@ class GoalsTabState extends State<GoalsTab> {
 
   // Изменяем метод для переключения статуса выполнения
   void _toggleGoalCompletion(String goalId) {
+    final bool newStatus = !_completedGoalIds.contains(goalId);
+    
     setState(() {
-      if (_completedGoalIds.contains(goalId)) {
-        // Если цель выполнена, убираем из списка выполненных
-        _completedGoalIds.remove(goalId);
-      } else {
+      if (newStatus) {
         // Если цель не выполнена, добавляем в список выполненных
         _completedGoalIds.add(goalId);
+      } else {
+        // Если цель выполнена, убираем из списка выполненных
+        _completedGoalIds.remove(goalId);
       }
     });
+    
+    // Сохраняем статус в базу данных
+    _updateGoalCompletionStatus(goalId, newStatus);
+  }
+  
+  // Обновление статуса выполнения цели в базе данных
+  Future<void> _updateGoalCompletionStatus(String goalId, bool isCompleted) async {
+    try {
+      await _supabase
+          .from('goals')
+          .update({'isComplete': isCompleted})
+          .eq('id', goalId);
+    } catch (e) {
+      debugPrint('Ошибка обновления статуса цели: $e');
+    }
   }
 }
