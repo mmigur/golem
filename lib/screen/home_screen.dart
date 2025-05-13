@@ -5,6 +5,8 @@ import 'package:golem/tab/tasks_tab.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../service/functions.dart';
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -229,7 +231,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     Text(
-                      _getShortWeekday(date.weekday),
+                      getShortWeekday(date.weekday),
                       style: TextStyle(
                         color: isSelected ? Colors.white : const Color(0xFF80858F),
                         fontSize: 12,
@@ -288,7 +290,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   Text(
-                    _getShortWeekday(date.weekday),
+                    getShortWeekday(date.weekday),
                     style: TextStyle(
                       color: isSelected ? Colors.white : const Color(0xFF80858F),
                       fontSize: 12,
@@ -301,10 +303,5 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
     );
-  }
-
-  String _getShortWeekday(int weekday) {
-    const days = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-    return days[weekday % 7];
   }
 }
