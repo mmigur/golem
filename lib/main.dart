@@ -30,6 +30,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
+      debugShowCheckedModeBanner: false,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate, // Локализация Material компонентов
         GlobalWidgetsLocalizations.delegate, // Локализация базовых виджетов
@@ -38,7 +39,7 @@ class MyApp extends StatelessWidget {
       supportedLocales: const [
         Locale('ru', 'RU'), // Русский язык
       ],
-      home: HomeScreen(),
+      home: SplashScreen(),
     );
   }
 }

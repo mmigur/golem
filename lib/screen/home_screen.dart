@@ -23,16 +23,31 @@ class _HomeScreenState extends State<HomeScreen> {
   final SupabaseClient _supabase = Supabase.instance.client;
   final GlobalKey<GoalsTabState> _goalsTabKey = GlobalKey();
   final GlobalKey<TasksTabState> _tasksTabKey = GlobalKey();
-
-  late final List<Widget> _pages = [
-    GoalsTab(key: _goalsTabKey),
-    TasksTab(key: _tasksTabKey),
-    const ReflectionTab(),
-  ];
+  
+  // Глобальный ключ для рефлексии, доступный из любого места
+  final GlobalKey<ReflectionTabState> _reflectionTabKey = GlobalKey();
+  
+  // Храним прямые ссылки на экземпляры вкладок для более надежного доступа
+  late GoalsTab _goalsTab;
+  late TasksTab _tasksTab;
+  late ReflectionTab _reflectionTab;
+  late List<Widget> _pages;
 
   @override
   void initState() {
     super.initState();
+    // Инициализируем экземпляры вкладок
+    _goalsTab = GoalsTab(key: _goalsTabKey);
+    _tasksTab = TasksTab(key: _tasksTabKey);
+    _reflectionTab = ReflectionTab(key: _reflectionTabKey);
+    
+    // Создаем список страниц
+    _pages = [
+      _goalsTab,
+      _tasksTab,
+      _reflectionTab,
+    ];
+    
     _loadUserNickname();
   }
 
@@ -65,24 +80,38 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final bool isGoalsTab = _currentIndex == 0;
+    final bool isReflectionTab = _currentIndex == 2;
 
     return Scaffold(
       appBar: AppBar(
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  DateFormat('d MMMM y', 'ru_RU').format(_selectedDate),
-                  style: const TextStyle(fontSize: 20),
-                ),
-                if (!isGoalsTab) Text(
-                  DateFormat('EEEE', 'ru_RU').format(_selectedDate),
-                  style: const TextStyle(fontSize: 14, color: Colors.grey),
-                ),
-              ],
+            GestureDetector(
+              onTap: () {
+                if (_currentIndex == 2) { // Только для экрана рефлексии
+                  debugPrint('===== НАЖАТИЕ НА ДАТУ ДЛЯ ДОБАВЛЕНИЯ РЕФЛЕКСИИ =====');
+                  
+                  // Прямой вызов без проверки ключа
+                }
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    DateFormat('d MMMM y', 'ru_RU').format(_selectedDate),
+                    style: const TextStyle(fontSize: 20),
+                  ),
+                  if (!isGoalsTab && !isReflectionTab) Text(
+                    DateFormat('EEEE', 'ru_RU').format(_selectedDate),
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                  if (isReflectionTab) const Text(
+                    'Нажмите, чтобы добавить рефлексию',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
             ),
             FloatingActionButton(
               onPressed: () {
@@ -91,15 +120,32 @@ class _HomeScreenState extends State<HomeScreen> {
                   final goalsTabState = _goalsTabKey.currentState;
                   if (goalsTabState != null) {
                     goalsTabState.showAddGoalSheet();
+                    debugPrint('Вызван метод для добавления цели');
+                  } else {
+                    debugPrint('ОШИБКА: Не удалось получить состояние GoalsTab');
                   }
                 } else if (_currentIndex == 1) {
                   // Для вкладки задач
                   final tasksTabState = _tasksTabKey.currentState;
                   if (tasksTabState != null) {
                     tasksTabState.showAddTaskSheet();
+                    debugPrint('Вызван метод для добавления задачи');
+                  } else {
+                    debugPrint('ОШИБКА: Не удалось получить состояние TasksTab');
                   }
-                } else {
-                  // Логика для других вкладок
+                } else if (_currentIndex == 2) {
+                  // Для вкладки рефлексии
+                  debugPrint('===== НАЖАТА КНОПКА ДОБАВЛЕНИЯ РЕФЛЕКСИИ =====');
+                  final reflectionTabState = _reflectionTabKey.currentState;
+                  if(reflectionTabState != null) {
+                    reflectionTabState.showAddReflectionSheet();
+                    debugPrint('Вызван метод для добавления рефлексии');
+                  }
+                  else{
+                    debugPrint('ОШИБКА: Не удалось получить состояние RefleactionTab');
+                  }
+                  // Прямой вызов методов экземпляра без проверки ключа
+                
                 }
               },
               mini: true,
@@ -111,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
-          if (!isGoalsTab) ...[
+          if (!isGoalsTab && !isReflectionTab) ...[
             Row(
               children: [
                 Padding(
@@ -142,9 +188,15 @@ class _HomeScreenState extends State<HomeScreen> {
             if (_isCalendarExpanded) _buildMonthSelector(),
             _buildCalendar(),
           ],
-          Expanded(child: _pages[_currentIndex]),
+          Expanded(
+            child: IndexedStack(
+              index: _currentIndex,
+              children: _pages,
+            ),
+          ),
         ],
       ),
+      floatingActionButton: null,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
@@ -182,9 +234,6 @@ class _HomeScreenState extends State<HomeScreen> {
               }
               break;
               
-            case 2: // Вкладка рефлексии
-              // Обработка для вкладки рефлексии, если потребуется
-              break;
           }
           
           debugPrint('================================');
