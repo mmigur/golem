@@ -39,7 +39,7 @@ class MyApp extends StatelessWidget {
       supportedLocales: const [
         Locale('ru', 'RU'), // Русский язык
       ],
-      home: SplashScreen(),
+      home: HomeScreen(),
     );
   }
 }

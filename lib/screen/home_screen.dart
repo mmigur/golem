@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:golem/tab/goal_tab.dart';
 import 'package:golem/tab/reflection_tab.dart';
 import 'package:golem/tab/tasks_tab.dart';
+import 'package:golem/tab/analytics_tab.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -23,14 +24,14 @@ class _HomeScreenState extends State<HomeScreen> {
   final SupabaseClient _supabase = Supabase.instance.client;
   final GlobalKey<GoalsTabState> _goalsTabKey = GlobalKey();
   final GlobalKey<TasksTabState> _tasksTabKey = GlobalKey();
-  
-  // Глобальный ключ для рефлексии, доступный из любого места
   final GlobalKey<ReflectionTabState> _reflectionTabKey = GlobalKey();
+  final GlobalKey<AnalyticsTabState> _analyticsTabKey = GlobalKey();
   
   // Храним прямые ссылки на экземпляры вкладок для более надежного доступа
   late GoalsTab _goalsTab;
   late TasksTab _tasksTab;
   late ReflectionTab _reflectionTab;
+  late AnalyticsTab _analyticsTab;
   late List<Widget> _pages;
 
   @override
@@ -40,12 +41,14 @@ class _HomeScreenState extends State<HomeScreen> {
     _goalsTab = GoalsTab(key: _goalsTabKey);
     _tasksTab = TasksTab(key: _tasksTabKey);
     _reflectionTab = ReflectionTab(key: _reflectionTabKey);
+    _analyticsTab = AnalyticsTab(key: _analyticsTabKey);
     
     // Создаем список страниц
     _pages = [
       _goalsTab,
       _tasksTab,
       _reflectionTab,
+      _analyticsTab,
     ];
     
     _loadUserNickname();
@@ -81,6 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final bool isGoalsTab = _currentIndex == 0;
     final bool isReflectionTab = _currentIndex == 2;
+    final bool isAnalyticsTab = _currentIndex == 3;
 
     return Scaffold(
       appBar: AppBar(
@@ -91,8 +95,6 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 if (_currentIndex == 2) { // Только для экрана рефлексии
                   debugPrint('===== НАЖАТИЕ НА ДАТУ ДЛЯ ДОБАВЛЕНИЯ РЕФЛЕКСИИ =====');
-                  
-                  // Прямой вызов без проверки ключа
                 }
               },
               child: Column(
@@ -104,7 +106,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   if (!isGoalsTab && !isReflectionTab) Text(
                     DateFormat('EEEE', 'ru_RU').format(_selectedDate),
-                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF80858F),
+                    ),
                   ),
                   if (isReflectionTab) const Text(
                     'Нажмите, чтобы добавить рефлексию',
@@ -113,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            FloatingActionButton(
+            if (!isAnalyticsTab) FloatingActionButton(
               onPressed: () {
                 if (_currentIndex == 0) {
                   // Получаем состояние GoalsTab и вызываем метод
@@ -144,8 +149,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   else{
                     debugPrint('ОШИБКА: Не удалось получить состояние RefleactionTab');
                   }
-                  // Прямой вызов методов экземпляра без проверки ключа
-                
                 }
               },
               mini: true,
@@ -157,7 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
-          if (!isGoalsTab && !isReflectionTab) ...[
+          if (!isGoalsTab && !isReflectionTab && !isAnalyticsTab) ...[
             Row(
               children: [
                 Padding(
@@ -165,9 +168,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: _nickname.isNotEmpty
                       ? Text(
                     '@$_nickname',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       color: Colors.black,
+                      fontWeight: isAnalyticsTab ? FontWeight.bold : FontWeight.normal,
                     ),
                   )
                       : const SizedBox.shrink(),
@@ -188,6 +192,21 @@ class _HomeScreenState extends State<HomeScreen> {
             if (_isCalendarExpanded) _buildMonthSelector(),
             _buildCalendar(),
           ],
+          if (isAnalyticsTab && _nickname.isNotEmpty) Padding(
+            padding: const EdgeInsets.only(left: 12.0, top: 8.0),
+            child: Row(
+              children: [
+                Text(
+                  '@$_nickname',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
           Expanded(
             child: IndexedStack(
               index: _currentIndex,
@@ -224,16 +243,17 @@ class _HomeScreenState extends State<HomeScreen> {
             case 1: // Вкладка задач
               final tasksTabState = _tasksTabKey.currentState;
               if (tasksTabState != null) {
-                // Установить фильтр по текущей дате
                 tasksTabState.setFilterDate(_selectedDate);
-                
-                // Обновить задачи
                 tasksTabState.refreshTasksData();
-                
-                debugPrint('Обновлен фильтр задач: ${_selectedDate.day}.${_selectedDate.month}.${_selectedDate.year}');
               }
               break;
-              
+
+            case 3: // Вкладка аналитики
+              final analyticsTabState = _analyticsTabKey.currentState;
+              if (analyticsTabState != null) {
+                analyticsTabState.refreshData();
+              }
+              break;
           }
           
           debugPrint('================================');
@@ -252,6 +272,10 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.note_alt_outlined),
             label: 'Рефлексия',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.analytics_outlined),
+            label: 'Аналитика',
           ),
         ],
       ),

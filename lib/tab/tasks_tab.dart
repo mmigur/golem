@@ -253,27 +253,27 @@ class TasksTabState extends State<TasksTab> {
               'Связанная цель',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
-            DropdownButtonFormField<String>(
+            DropdownButtonFormField<String?>(
               value: _selectedGoalId,
               decoration: const InputDecoration(
                 hintText: 'Выберите цель',
               ),
-              items: _availableGoals.map((goal) {
-                return DropdownMenuItem<String>(
-                  value: goal['id'],
-                  child: Text(goal['title']),
-                );
-              }).toList(),
+              items: [
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('Без цели'),
+                ),
+                ..._availableGoals.map((goal) {
+                  return DropdownMenuItem<String?>(
+                    value: goal['id'],
+                    child: Text(goal['title']),
+                  );
+                }).toList(),
+              ],
               onChanged: (String? newValue) {
                 setState(() {
                   _selectedGoalId = newValue;
                 });
-              },
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Пожалуйста, выберите цель';
-                }
-                return null;
               },
             ),
             const SizedBox(height: 16),
@@ -339,7 +339,7 @@ class TasksTabState extends State<TasksTab> {
   }
 
   Future<void> _addTask() async {
-    if (_formKey.currentState!.validate() && _selectedDate != null && _selectedGoalId != null) {
+    if (_formKey.currentState!.validate() && _selectedDate != null) {
       try {
         final user = _supabase.auth.currentUser;
         if (user != null) {
@@ -350,7 +350,7 @@ class TasksTabState extends State<TasksTab> {
             'deadline': _selectedDate!.toIso8601String(),
             'done_params': _doneParamsController.text,
             'profile_id': user.id,
-            'isComplete': false, // По умолчанию задача не выполнена
+            'isComplete': false,
           };
           
           final response = await _supabase.from('tasks').insert(newTask).select('*');
@@ -359,20 +359,15 @@ class TasksTabState extends State<TasksTab> {
             Navigator.pop(context);
             _clearForm();
             
-            // Добавляем новую задачу в локальный список и обновляем фильтр
             if (response != null && response.isNotEmpty) {
               setState(() {
                 _tasks.add(response[0]);
-                // Сортируем задачи по дедлайну
                 _tasks.sort((a, b) => DateTime.parse(a['deadline']).compareTo(DateTime.parse(b['deadline'])));
                 
-                // При добавлении задачи сразу устанавливаем фильтр на её дату
-                // чтобы пользователь видел новую задачу
                 final newTaskDate = DateTime.parse(response[0]['deadline']);
                 _filterDate = DateTime(newTaskDate.year, newTaskDate.month, newTaskDate.day);
               });
             } else {
-              // Если не получили ответ с данными, перезагружаем все задачи
               _loadTasks();
             }
             
