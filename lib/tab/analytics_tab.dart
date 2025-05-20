@@ -409,67 +409,69 @@ class AnalyticsTabState extends State<AnalyticsTab> {
       return Center(child: Text('Ошибка: $_error'));
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16.0, 32.0, 16.0, 16.0), // Увеличиваем отступ сверху
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Статистика
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatsCard(
-                  'Рефлексии',
-                  _reflections.length.toString(),
-                  Icons.psychology,
-                  _colors[0],
+    return Scaffold(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16.0, 32.0, 16.0, 16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Статистика
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatsCard(
+                    'Рефлексии',
+                    _reflections.length.toString(),
+                    Icons.psychology,
+                    _colors[0],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatsCard(
-                  'Задачи',
-                  _completedTasks.length.toString(),
-                  Icons.task_alt,
-                  _colors[1],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatsCard(
+                    'Задачи',
+                    _completedTasks.length.toString(),
+                    Icons.task_alt,
+                    _colors[1],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatsCard(
-                  'Цели',
-                  _completedGoals.length.toString(),
-                  Icons.flag,
-                  _colors[2],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatsCard(
+                    'Цели',
+                    _completedGoals.length.toString(),
+                    Icons.flag,
+                    _colors[2],
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
+              ],
+            ),
+            const SizedBox(height: 32),
 
-          // График выполненных задач
-          const Text(
-            'Выполненные задачи',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+            // График выполненных задач
+            const Text(
+              'Выполненные задачи',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          _buildTasksCompletionChart(),
-          const SizedBox(height: 32),
-          
-          // График задач по целям
-          const Text(
-            'Задачи по целям',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+            const SizedBox(height: 16),
+            _buildTasksCompletionChart(),
+            const SizedBox(height: 32),
+            
+            // График задач по целям
+            const Text(
+              'Задачи по целям',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          _buildTasksPerGoalChart(),
-        ],
+            const SizedBox(height: 16),
+            _buildTasksPerGoalChart(),
+          ],
+        ),
       ),
     );
   }

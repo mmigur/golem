@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:golem/screen/home_screen.dart';
 import 'package:golem/screen/splash_screen.dart';
+import 'package:golem/screens/profile_screen.dart';
+import 'package:golem/screen/sign_in_screen.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -39,7 +41,13 @@ class MyApp extends StatelessWidget {
       supportedLocales: const [
         Locale('ru', 'RU'), // Русский язык
       ],
-      home: HomeScreen(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => SplashScreen(),
+        '/home': (context) => const HomeScreen(),
+        '/profile': (context) => const ProfileScreen(),
+        '/sign_in': (context) => const SignInScreen(),
+      },
     );
   }
 }
