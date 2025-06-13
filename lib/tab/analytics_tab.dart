@@ -22,6 +22,10 @@ class AnalyticsTabState extends State<AnalyticsTab> {
   List<Map<String, dynamic>> _reflections = [];
   Map<String, int> _tasksPerGoal = {};
 
+  // Date range for the bar chart
+  DateTime? _barChartStartDate;
+  DateTime? _barChartEndDate;
+
   // Цвета для графиков
   final List<Color> _colors = [
     const Color(0xFF2196F3), // Синий
@@ -36,6 +40,9 @@ class AnalyticsTabState extends State<AnalyticsTab> {
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _barChartStartDate = DateTime(now.year, now.month, now.day - 6); // Default to last 7 days
+    _barChartEndDate = now;
     _loadData();
   }
 
@@ -160,125 +167,158 @@ class AnalyticsTabState extends State<AnalyticsTab> {
     );
   }
 
-  Widget _buildTasksCompletionChart() {
+    Future<void> _selectBarChartDateRange(BuildContext context, bool isStartDate) async {
+    final DateTime initialDate = (isStartDate ? _barChartStartDate : _barChartEndDate) ?? DateTime.now();
+    final DateTime firstDate = DateTime(2000);
+    final DateTime lastDate = DateTime(2101);
+
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      locale: const Locale('ru', 'RU'),
+    );
+
+    if (pickedDate != null) {
+      setState(() {
+        if (isStartDate) {
+          _barChartStartDate = pickedDate;
+          // Ensure end date is not before start date
+          if (_barChartEndDate != null && _barChartEndDate!.isBefore(_barChartStartDate!)) {
+            _barChartEndDate = _barChartStartDate;
+          }
+        } else {
+          _barChartEndDate = pickedDate;
+          // Ensure start date is not after end date
+          if (_barChartStartDate != null && _barChartStartDate!.isAfter(_barChartEndDate!)) {
+            _barChartStartDate = _barChartEndDate;
+          }
+        }
+      });
+    }
+  }
+
+Widget _buildTasksCompletionChart() {
     if (_completedTasks.isEmpty) {
-      return const Center(
-        child: Text(
-          'Нет выполненных задач',
-          style: TextStyle(
-            color: Color(0xFF80858F),
-            fontSize: 14,
-          ),
-        ),
-      );
-    }
-
-    // Группируем задачи по дням
-    final Map<DateTime, int> tasksByDay = {};
-    for (var task in _completedTasks) {
-      final deadline = task['deadline'];
-      if (deadline != null) {
-        final date = DateTime.parse(deadline).toLocal();
-        final day = DateTime(date.year, date.month, date.day);
-        tasksByDay[day] = (tasksByDay[day] ?? 0) + 1;
-      }
-    }
-
-    // Создаем точки для графика за последние 7 дней
-    final spots = <FlSpot>[];
-    final now = DateTime.now();
-    String currentMonth = '';
-    
-    for (int i = 6; i >= 0; i--) {
-      final date = DateTime(now.year, now.month, now.day - i);
-      spots.add(FlSpot(6 - i.toDouble(), (tasksByDay[date] ?? 0).toDouble()));
-      // Запоминаем месяц для отображения
-      if (currentMonth.isEmpty) {
-        currentMonth = DateFormat('MMMM', 'ru_RU').format(date);
-      }
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          currentMonth,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 200,
-          child: LineChart(
-            LineChartData(
-              gridData: const FlGridData(show: false),
-              titlesData: FlTitlesData(
-                leftTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                rightTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                topTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    getTitlesWidget: (value, meta) {
-                      if (value < 0 || value > 6) return const Text('');
-                      final date = DateTime(now.year, now.month, now.day - (6 - value.toInt()));
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
-                        child: Text(
-                          date.day.toString(),
-                          style: const TextStyle(
-                            color: Color(0xFF80858F),
-                            fontSize: 12,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              borderData: FlBorderData(show: false),
-              lineBarsData: [
-                LineChartBarData(
-                  spots: spots,
-                  isCurved: true,
-                  color: _colors[0],
-                  barWidth: 3,
-                  isStrokeCapRound: true,
-                  dotData: FlDotData(
-                    show: true,
-                    getDotPainter: (spot, percent, barData, index) {
-                      return FlDotCirclePainter(
-                        radius: 6,
-                        color: _colors[0],
-                        strokeWidth: 2,
-                        strokeColor: Colors.white,
-                      );
-                    },
-                  ),
-                  belowBarData: BarAreaData(
-                    show: true,
-                    color: _colors[0].withOpacity(0.2),
-                  ),
-                ),
-              ],
-              minX: 0,
-              maxX: 6,
-              minY: 0,
-            ),
-          ),
-        ),
-      ],
+    return const Center(
+      child: Text(
+        'Нет выполненных задач для отображения',
+        style: TextStyle(color: Color(0xFF80858F), fontSize: 14),
+      ),
     );
   }
+
+  if (_barChartStartDate == null || _barChartEndDate == null) {
+    return const Center(
+      child: Text(
+        'Выберите диапазон дат',
+        style: TextStyle(color: Color(0xFF80858F), fontSize: 14),
+      ),
+    );
+  }
+
+  final Map<DateTime, int> tasksByDayInRange = {};
+  for (var task in _completedTasks) {
+    final deadlineString = task['deadline'];
+    if (deadlineString != null) {
+      try {
+        final taskDate = DateTime.parse(deadlineString).toLocal();
+        final dayOnly = DateTime(taskDate.year, taskDate.month, taskDate.day);
+        if (!dayOnly.isBefore(_barChartStartDate!) && !dayOnly.isAfter(_barChartEndDate!)) {
+          tasksByDayInRange[dayOnly] = (tasksByDayInRange[dayOnly] ?? 0) + 1;
+        }
+      } catch (e) {
+        // Handle or log date parsing errors if necessary
+        debugPrint('Error parsing task deadline: $deadlineString - $e');
+      }
+    }
+  }
+
+  final List<BarChartGroupData> barGroups = [];
+  final List<DateTime> daysInSelectedRange = [];
+  if (_barChartStartDate != null && _barChartEndDate != null) {
+    for (DateTime date = _barChartStartDate!;
+        !date.isAfter(_barChartEndDate!);
+        date = date.add(const Duration(days: 1))) {
+      daysInSelectedRange.add(date);
+    }
+  }
+  
+  double maxY = 0;
+  for (int i = 0; i < daysInSelectedRange.length; i++) {
+    final date = daysInSelectedRange[i];
+    final count = (tasksByDayInRange[date] ?? 0).toDouble();
+    if (count > maxY) maxY = count;
+    barGroups.add(
+      BarChartGroupData(
+        x: i,
+        barRods: [
+          BarChartRodData(
+            toY: count,
+            color: _colors[i % _colors.length],
+            width: 16,
+            borderRadius: BorderRadius.circular(4)
+          ),
+        ],
+      ),
+    );
+  }
+  if (maxY == 0) maxY = 5; // Default maxY if no tasks
+
+  return SizedBox(
+    height: 300,
+    child: BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: maxY,
+        barTouchData: BarTouchData(
+          enabled: false, // Can enable tooltips later if needed
+        ),
+        titlesData: FlTitlesData(
+          show: true,
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (double value, TitleMeta meta) {
+                final index = value.toInt();
+                if (index >= 0 && index < daysInSelectedRange.length) {
+                  final date = daysInSelectedRange[index];
+                  // Show fewer labels if the range is too wide
+                  if (daysInSelectedRange.length > 14 && index % (daysInSelectedRange.length ~/ 7) != 0 && index != daysInSelectedRange.length -1 && index != 0) {
+                     return const SizedBox.shrink();
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 6.0),
+                    child: Text(DateFormat('dd/MM').format(date), style: const TextStyle(color: Color(0xff7589a2), fontWeight: FontWeight.bold, fontSize: 10)),
+                  );
+                }
+                return const Text('');
+              },
+              reservedSize: 32,
+            ),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 28,
+              interval: (maxY / 5).ceilToDouble() > 0 ? (maxY / 5).ceilToDouble() : 1, // Dynamic interval
+              getTitlesWidget: (value, meta) {
+                 if (value == 0 && maxY > 0) return const SizedBox.shrink(); // Avoid 0 if there are values
+                 if (value > maxY && maxY > 0) return const SizedBox.shrink(); // Avoid values greater than maxY
+                 return Text(value.toInt().toString(), style: const TextStyle(color: Color(0xff7589a2), fontWeight: FontWeight.bold, fontSize: 10));
+              }
+            ),
+          ),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+        borderData: FlBorderData(show: false),
+        gridData: const FlGridData(show: true, drawVerticalLine: false, horizontalInterval: 1),
+        barGroups: barGroups,
+      ),
+    ),
+  );  }
 
   Widget _buildTasksPerGoalChart() {
     if (_tasksPerGoal.isEmpty) {
@@ -448,6 +488,24 @@ class AnalyticsTabState extends State<AnalyticsTab> {
             ),
             const SizedBox(height: 32),
 
+            // Date Pickers for Bar Chart
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: _colors[0]),
+                  onPressed: () => _selectBarChartDateRange(context, true),
+                  child: Text(_barChartStartDate != null ? DateFormat('dd.MM.yy', 'ru_RU').format(_barChartStartDate!) : 'Начало', style: const TextStyle(color: Colors.white)),
+                ),
+                const Text("-", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: _colors[1]),
+                  onPressed: () => _selectBarChartDateRange(context, false),
+                  child: Text(_barChartEndDate != null ? DateFormat('dd.MM.yy', 'ru_RU').format(_barChartEndDate!) : 'Конец', style: const TextStyle(color: Colors.white)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
             // График выполненных задач
             const Text(
               'Выполненные задачи',

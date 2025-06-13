@@ -143,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   if (isReflectionTab) const Text(
-                    'Нажмите, чтобы добавить рефлексию',
+                    '',
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ],
